@@ -1,9 +1,9 @@
 package main
 
 import (
-	// "bufio"
+	"bufio"
 	"fmt"
-	"io"
+	// "io"
 	"net"
 	"strings"
 	// "os"
@@ -31,14 +31,14 @@ func handleConn(conn net.Conn) {
 	fmt.Printf("client connected :%v\n", conn.RemoteAddr())
 	defer conn.Close()
 
-	data, err := io.ReadAll(conn)
+	reader := bufio.NewReader(conn)
+
+	line, err := reader.ReadString('\n')
 	if err != nil {
 		fmt.Println("some happend")
 	}
 
-	line := string(data)
-
-	line = strings.Split(line, "\r\n")[0]
+	// line = strings.Split(line, "\r\n")[0]
 
 	words := strings.Fields(line)
 
@@ -48,6 +48,13 @@ func handleConn(conn net.Conn) {
 	}
 
 	fmt.Printf("method = %v\npath = %v\nversion = %v\n", words[0], words[1], words[2])
+
+	if words[0] == "GET" {
+		getMessage := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 14\r\n\r\n<h1>Hello</h1>")
+
+		conn.Write(getMessage)
+
+	}
 
 }
 
