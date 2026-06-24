@@ -1,54 +1,63 @@
 package main
 
 import (
-	// "bufio"
+	"bufio"
 	"fmt"
-	"io"
+	// "io"
 	"net"
-	"os"
+	"strings"
+	// "os"
 )
 
-func createServer() {
-	ln, err := net.Listen("tcp", "0.0.0.0:8080")
+func clientHandler() {
+	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		fmt.Println("oh shit, not good, server ded")
-		os.Exit(1)
+		fmt.Println("cant crete socket")
+
 	}
-	defer ln.Close()
-	fmt.Println("batloll server listeing on post 8080")
+
 	for {
 		conn, err := ln.Accept()
+
 		if err != nil {
-			fmt.Println("me go die now")
+			fmt.Println("handshake unsuccessfulll")
 		}
-		go handleConnection(conn)
+
+		go handleConn(conn)
 	}
 }
 
-func handleConnection(conn net.Conn) {
+func handleConn(conn net.Conn) {
+	fmt.Printf("client connected :%v\n", conn.RemoteAddr())
 	defer conn.Close()
 
-	fmt.Printf("Client Connected %v\n", conn.RemoteAddr().String())
+	reader := bufio.NewReader(conn)
 
-	_, err := io.Copy(conn, conn)
+	line, err := reader.ReadString('\n')
 	if err != nil {
-		fmt.Println("cant write back")
+		fmt.Println("some happend")
 	}
-	fmt.Printf("client dissssssconected %s\n", conn.RemoteAddr().String())
+
+	// line = strings.Split(line, "\r\n")[0]
+
+	words := strings.Fields(line)
+
+	if len(words) < 3 {
+		fmt.Println("invalid request")
+		return
+	}
+
+	fmt.Printf("method = %v\npath = %v\nversion = %v\n", words[0], words[1], words[2])
+
+	if words[0] == "GET" {
+		getMessage := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 14\r\n\r\n<h1>Hello</h1>")
+
+		conn.Write(getMessage)
+
+	}
 
 }
 
 func main() {
-	//conn, err := net.Dial("tcp", "golang.org:80")
-	//if err != nil {
-	//	fmt.Println("could not create connection")
-	//}
-	//fmt.Fprintf(conn, "HEAD / HTTP/1.0\r\n\r\n")
-
-	//status, err := bufio.NewReader(conn).ReadString('\n')
-
-	//fmt.Println(status)
-
-	createServer()
-
+	clientHandler()
 }
