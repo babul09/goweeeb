@@ -33,10 +33,6 @@ func SendResponse(conn net.Conn, status string, body string) {
 
 }
 
-func ReadResponse(conn net.Conn) {
-
-}
-
 func handleConn(conn net.Conn) {
 	fmt.Printf("client connected :%v\n", conn.RemoteAddr())
 	defer conn.Close()
