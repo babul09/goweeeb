@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"strconv"
+
 	// "io"
 	"net"
 	"strings"
@@ -10,14 +12,14 @@ import (
 )
 
 func clientHandler() {
-	listner, err := net.Listen("tcp", ":8080")
+	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		fmt.Println("cant create socket")
 
 	}
 
 	for {
-		conn, err := listner.Accept()
+		conn, err := listener.Accept()
 
 		if err != nil {
 			fmt.Println("handshake unsuccessfulll")
@@ -57,7 +59,8 @@ func handleGet(words []string, conn net.Conn) {
 
 func handlePost(reader *bufio.Reader, conn net.Conn) {
 	contentLength := 0
-	// var err error
+	headers := make(map[string]string)
+	var err error
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -65,30 +68,39 @@ func handlePost(reader *bufio.Reader, conn net.Conn) {
 		}
 
 		if line == "\r\n" {
-			body := make([]byte, contentLength)
-			_, err = reader.Read(body)
-			if err != nil {
-				fmt.Println("error reading body")
-			}
-			fmt.Println(string(body))
-
-			parts := strings.Split(string(body), "=")
-			if len(parts) != 2 {
-				sendResponse(conn, "400 Bad Request", "<h1>Bad Request</h1>")
-				return
-			}
-
-			userName := parts[1]
-			respo := fmt.Sprintf("<h1>Hello %s</h1>", userName)
-			sendResponse(conn, "200 OK", respo)
 			break
 		}
 
-		if strings.HasPrefix(line, "Content-Length") {
-			fmt.Sscanf(line, "Content-Length: %d", &contentLength)
-			fmt.Println(contentLength)
-		}
+		parts := strings.SplitN(line, ":", 2)
+		parts[1] = strings.TrimSpace(parts[1])
+
+		headers[parts[0]] = parts[1]
+
 	}
+
+	contentLength, err = strconv.Atoi(headers["Content-Length"])
+	if err != nil {
+		fmt.Println("error in length conv")
+		return
+	}
+
+	fmt.Println(contentLength)
+	body := make([]byte, contentLength)
+	_, err = reader.Read(body)
+	if err != nil {
+		fmt.Println("error reading body")
+	}
+	fmt.Println(string(body))
+
+	parts := strings.SplitN(string(body), "=", 2)
+	if len(parts) != 2 {
+		sendResponse(conn, "400 Bad Request", "<h1>Bad Request</h1>")
+		return
+	}
+
+	userName := parts[1]
+	respo := fmt.Sprintf("<h1>Hello %s</h1>", userName)
+	sendResponse(conn, "200 OK", respo)
 
 }
 
