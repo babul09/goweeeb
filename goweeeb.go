@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"net"
 )
@@ -16,11 +17,17 @@ type Request struct {
 }
 
 func clientHandler() {
-	listener, err := net.Listen("tcp", ":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // Local fallback
+	}
+
+	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		fmt.Println("cant create socket")
 
 	}
+	defer listener.Close()
 
 	for {
 		conn, err := listener.Accept()
