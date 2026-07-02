@@ -1,47 +1,34 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"mime"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-func readFile(path string) (readbuf []byte, mtype string, err error) {
+func readFile(path string) ([]byte, string, error) {
+	const documentRoot = "public/public"
 
-	file, err := os.Open("public/public" + path)
+	clean := filepath.Clean(path)
+	clean = strings.TrimPrefix(clean, "/")
 
+	if strings.HasPrefix(clean, "..") {
+		return nil, "", fmt.Errorf("invalid path")
+	}
+
+	fullPath := filepath.Join(documentRoot, clean)
+
+	data, err := os.ReadFile(fullPath)
 	if err != nil {
-		fmt.Println("invalid path")
-		return
-	}
-	var allbyte []byte
-	defer file.Close()
-	r := bufio.NewReader(file)
-	buff := make([]byte, 1024)
-	for {
-		n, err := r.Read(buff)
-		if n > 0 {
-			allbyte = append(allbyte, buff[:n]...)
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, "", err
-		}
+		return nil, "", err
 	}
 
-	ext := filepath.Ext("public/public" + path)
-
-	mimeType := mime.TypeByExtension(ext)
-
+	mimeType := mime.TypeByExtension(filepath.Ext(fullPath))
 	if mimeType == "" {
 		mimeType = "application/octet-stream"
 	}
 
-	return allbyte, mimeType, err
-
+	return data, mimeType, nil
 }
