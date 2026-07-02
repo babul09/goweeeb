@@ -8,43 +8,49 @@ import (
 	"strings"
 )
 
-func handleGet(req *Request, conn net.Conn) {
-	switch req.Path {
-	case "/":
-		{
-			sendResponse(conn, "200 OK", req.Headers["Content-Type"], string(readFile("/index.html")))
-		}
-	case "/styles.css":
-		sendResponse(
-			conn,
-			"200 OK",
-			req.Headers["Content-Type"],
-			string(readFile(req.Path)),
-		)
-	case "/script.js":
-		sendResponse(
-			conn,
-			"200 OK",
-			"application/javascript",
-			string(readFile(req.Path)),
-		)
-	case "/about":
-		{
-			sendResponse(conn, "200 OK", "text/html", "<h1>about</h1>")
-		}
-	default:
-		{
-			sendResponse(conn, "404 Not Found", "text/html", string(readFile(req.Path)))
-		}
+func serveFile(req *Request, conn net.Conn) {
+	path := req.Path
+
+	if path == "/" {
+		path = "/index.html"
 	}
 
+	data, mime, err := readFile(req.Path)
+	if err != nil {
+		fmt.Println(" file not found ")
+		return
+	}
+	sendResponse(conn, "200 OK", mime, string(data))
 }
 
-func handlePost(req *Request, reader *bufio.Reader, conn net.Conn) {
+func handleGet(req *Request, conn net.Conn) {
+	serveFile(req, conn)
+}
 
-	contentLength := 0
+func readRequest(conn net.Conn) (*Request, error) {
+	req := &Request{
+		Headers: make(map[string]string),
+	}
+
+	reader := bufio.NewReader(conn)
+
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("some happend")
+	}
+
+	words := strings.Fields(line)
+
+	if len(words) < 3 {
+		fmt.Println("invalid request")
+		return nil, err
+	}
+
+	req.Method, req.Path, req.Version = words[0], words[1], words[2]
+
+	fmt.Printf("method = %v\npath = %v\nversion = %v\n", req.Method, req.Path, req.Version)
+
 	// headers := make(map[string]string)
-	var err error
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -62,21 +68,28 @@ func handlePost(req *Request, reader *bufio.Reader, conn net.Conn) {
 
 	}
 
-	contentLength, err = strconv.Atoi(req.Headers["Content-Length"])
-	if err != nil {
-		fmt.Println("error in length conv")
-		return
-	}
+	contentLengthStr, ok := req.Headers["Content-Length"]
+	if ok {
+		contentLength, err := strconv.Atoi(contentLengthStr)
+		if err != nil {
+			fmt.Println("error in length conv")
+			return nil, err
+		}
 
-	fmt.Println(contentLength)
-	body := make([]byte, contentLength)
-	_, err = reader.Read(body)
-	if err != nil {
-		fmt.Println("error reading body")
+		req.Body = make([]byte, contentLength)
+		_, err = reader.Read(req.Body)
+		if err != nil {
+			fmt.Println("error reading body")
+		}
 	}
-	fmt.Println(string(body))
+	return req, nil
+}
 
-	parts := strings.SplitN(string(body), "=", 2)
+func handlePost(req *Request, conn net.Conn) {
+
+	fmt.Println(string(req.Body))
+
+	parts := strings.SplitN(string(req.Body), "=", 2)
 	if len(parts) != 2 {
 		sendResponse(conn, "400 Bad Request", "text/html", "<h1>Bad Request</h1>")
 		return
