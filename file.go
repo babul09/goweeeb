@@ -2,15 +2,21 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"mime"
 	"os"
+	"path/filepath"
 )
 
-func readFile(path string) (readbuf []byte) {
+func readFile(path string) (readbuf []byte, mtype string, err error) {
 
 	file, err := os.Open("public/public" + path)
 
-	check(err)
+	if err != nil {
+		fmt.Println("invalid path")
+		return
+	}
 	var allbyte []byte
 	defer file.Close()
 	r := bufio.NewReader(file)
@@ -24,9 +30,18 @@ func readFile(path string) (readbuf []byte) {
 			break
 		}
 		if err != nil {
-			panic(n)
+			return nil, "", err
 		}
 	}
-	return allbyte
+
+	ext := filepath.Ext("public/public" + path)
+
+	mimeType := mime.TypeByExtension(ext)
+
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
+	}
+
+	return allbyte, mimeType, err
 
 }
