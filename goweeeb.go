@@ -1,10 +1,11 @@
 package main
 
 import (
+	// "bytes"
 	"fmt"
-	"os"
-
+	"github.com/dimiro1/banner"
 	"net"
+	"os"
 )
 
 type Request struct {
@@ -28,6 +29,7 @@ func clientHandler() {
 
 	}
 	defer listener.Close()
+	fmt.Println(listener.Addr())
 
 	for {
 		conn, err := listener.Accept()
@@ -55,27 +57,40 @@ func handleConn(conn net.Conn) {
 
 	fmt.Printf("client connected :%v\n", conn.RemoteAddr())
 	defer conn.Close()
-
-	req, err := readRequest(conn)
-	if err != nil {
-		return
-	}
-
-	switch req.Method {
-
-	case "GET":
-		{
-			handleGet(req, conn)
+	for {
+		req, err := readRequest(conn)
+		if err != nil {
+			return
 		}
 
-	case "POST":
-		{
-			handlePost(req, conn)
-		}
-	}
+		switch req.Method {
 
+		case "GET":
+			{
+				handleGet(req, conn)
+			}
+
+		case "POST":
+			{
+				handlePost(req, conn)
+			}
+		}
+
+	}
 }
 
 func main() {
+	bannerFile, err := os.Open("banner.txt")
+	if err != nil {
+		panic("Could not open banner.txt file: " + err.Error())
+	}
+	defer bannerFile.Close()
+
+	isEnabled := true
+	isColorEnabled := true
+
+	// 2. Pass the file descriptor directly
+	banner.Init(os.Stdout, isEnabled, isColorEnabled, bannerFile)
+
 	clientHandler()
 }
